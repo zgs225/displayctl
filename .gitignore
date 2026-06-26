@@ -1,0 +1,208 @@
+# ============================================
+# Go / golang
+# ============================================
+
+# Compiled binaries
+displayctl
+*.exe
+*.exe~
+*.dll
+*.dylib
+*.so
+*.so.*
+*.test
+*.out
+
+# Go workspace files
+go.work
+go.work.sum
+
+# Test/coverage/profiling artifacts
+*.coverprofile
+*.cover
+coverage.txt
+coverage.html
+*.prof
+*.pprof
+
+# Dependency directories (vendoring, modules cache)
+vendor/
+.idea/
+.vscode/
+*.iml
+
+# ============================================
+# Linux / GNU
+# ============================================
+
+# Kernel / core dumps
+core
+core.*
+
+# Object files / shared libraries (also covered by Go section but kept for native C interop)
+*.o
+*.ko
+*.obj
+*.elf
+*.a
+*.lib
+*.so
+
+# Linux distribution package build artifacts
+*.deb
+*.rpm
+*.pkg
+*.pkg.tar
+*.pkg.tar.zst
+*.snap
+*.flatpak
+*.AppImage
+
+# Locale / man / info build artifacts
+*.mo
+*.po
+*.gmo
+*.info
+
+# ============================================
+# macOS / Darwin
+# ============================================
+
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon
+._*
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+
+# Apple folder metadata
+.AppleDB
+.AppleDesktop
+Network Trash Folder
+Temporary Items
+.apdisk
+
+# macOS specific build outputs
+*.dSYM
+*.dSYM.zip
+*.dSYM.tar.gz
+xcuserdata/
+*.xcuserstate
+*.xcuserdatad
+*.m2-asuser
+DerivedData/
+build/
+.build/
+Carthage/Build/
+
+# Homebrew
+*.brew
+
+# ============================================
+# Windows / Win32
+# ============================================
+
+# Windows thumbnail cache
+Thumbs.db
+ehthumbs.db
+ehthumbs_vista.db
+
+# Dump file
+*.stackdump
+
+# Folder configuration file
+[Dd]esktop.ini
+
+# Recycle Bin used on file shares
+$RECYCLE.BIN/
+
+# Windows Installer files
+*.cab
+*.msi
+*.msix
+*.msm
+*.msp
+
+# Windows shortcuts
+*.lnk
+
+# Visual Studio / .NET / MSBuild
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+[Ll]ogs/
+*.user
+*.suo
+*.userprefs
+*.sln.docstates
+*.userosscache
+*.sln.docstates
+*.pidb
+*.pdb
+*.opendb
+*.opensdf
+*.sdf
+*.cachefile
+*.VC.db
+*.VC.VC.opendb
+
+# ============================================
+# Editors / IDEs (cross-platform)
+# ============================================
+
+# Vim / Neovim
+*.swp
+*.swo
+*~
+.vim/
+.viminfo
+.nvim/
+.nvimlog
+
+# Emacs
+\#*\#
+.\#*
+
+# JetBrains (IntelliJ, GoLand, etc.)
+.idea/
+*.iml
+*.iws
+*.ipr
+
+# VS Code
+.vscode/
+.history/
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+# ============================================
+# Misc
+# ============================================
+
+# Logs
+*.log
+logs/
+
+# Secrets / environment
+.env
+.env.local
+.env.*.local
+
+# OS-generated noise
+*.tmp
+*.temp
+*.bak
+*.orig
+*.swp
+
+# Backup files
+*.backup
+*~
