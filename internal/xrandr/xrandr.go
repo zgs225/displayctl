@@ -23,13 +23,13 @@ func GetActiveOutput() (string, error) {
 		return "", err
 	}
 	re := regexp.MustCompile(`^(\S+)\s+connected\s+primary\s+\d+x\d+`)
-	for _, line := range strings.Split(out, "\n") {
+	for line := range strings.SplitSeq(out, "\n") {
 		if m := re.FindStringSubmatch(line); m != nil {
 			return m[1], nil
 		}
 	}
 	re2 := regexp.MustCompile(`^(\S+)\s+connected\s+\d+x\d+`)
-	for _, line := range strings.Split(out, "\n") {
+	for line := range strings.SplitSeq(out, "\n") {
 		if m := re2.FindStringSubmatch(line); m != nil {
 			return m[1], nil
 		}
@@ -44,7 +44,7 @@ func GetCurrentMode(output string) (string, error) {
 	}
 	pattern := fmt.Sprintf(`^%s\s+connected\s+(?:primary\s+)?(\d+x\d+)`, regexp.QuoteMeta(output))
 	re := regexp.MustCompile(pattern)
-	for _, line := range strings.Split(out, "\n") {
+	for line := range strings.SplitSeq(out, "\n") {
 		if m := re.FindStringSubmatch(line); m != nil {
 			return m[1], nil
 		}
@@ -67,7 +67,7 @@ func ValidateMode(output, mode string) (bool, error) {
 		return false, err
 	}
 	inOutputBlock := false
-	for _, line := range strings.Split(out, "\n") {
+	for line := range strings.SplitSeq(out, "\n") {
 		if strings.HasPrefix(line, output+" ") {
 			inOutputBlock = true
 			continue
