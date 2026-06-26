@@ -13,6 +13,7 @@ func NewRootCmd() *cobra.Command {
 		Short: "Manage xrandr display modes and DPI settings",
 	}
 	root.AddCommand(newApplyCmd())
+	root.AddCommand(newListCmd())
 	return root
 }
 
