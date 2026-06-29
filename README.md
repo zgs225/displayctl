@@ -33,11 +33,37 @@ A single X11 `:0` session on `Virtual-1` is shared across multiple remote client
 
 ## Installation / 安装
 
+### Via mise (recommended) / 通过 mise 安装（推荐）
+
+If you use [mise](https://mise.jdx.dev/) (which is the case for the companion dotfiles repo), add `displayctl` to your mise config:
+
+如果你使用 [mise](https://mise.jdx.dev/)（配套的 dotfiles 仓库就是这种情况），将 `displayctl` 添加到你的 mise 配置：
+
+```toml
+# ~/.config/mise/conf.d/displayctl.toml
+[tools]
+displayctl = "go:github.com/zgs225/displayctl"
+```
+
+Then run / 然后执行：
+
+```bash
+mise install
+```
+
+Or wait — if you use the companion dotfiles repo, `run_after_mise-install.sh` runs `mise install -q` after every `chezmoi apply`, so `displayctl` will be installed automatically.
+
+或者直接等待 — 如果你使用配套的 dotfiles 仓库，`run_after_mise-install.sh` 会在每次 `chezmoi apply` 后执行 `mise install -q`，`displayctl` 会被自动安装。
+
+The companion dotfiles repo ships a chezmoi template that generates this config **only when i3 is detected** (using the existing `useI3` data variable), so it is automatically installed on i3 machines and skipped elsewhere.
+
+配套的 dotfiles 仓库附带一个 chezmoi 模板，**仅在检测到 i3 时** 才生成此配置（使用现有的 `useI3` 数据变量），因此在 i3 机器上会自动安装，其他环境则跳过。
+
 ### Build from source / 从源码构建
 
 ```bash
-git clone https://github.com/yuez/displayctl.git ~/Workspace/Golang/displayctl
-cd ~/Workspace/Golang/displayctl
+git clone https://github.com/zgs225/displayctl.git ~/workspace/Golang/displayctl
+cd ~/workspace/Golang/displayctl
 go build -o displayctl .
 cp displayctl ~/.bin/displayctl
 ```
