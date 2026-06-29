@@ -42,8 +42,12 @@ If you use [mise](https://mise.jdx.dev/) (which is the case for the companion do
 ```toml
 # ~/.config/mise/conf.d/displayctl.toml
 [tools]
-displayctl = "go:github.com/zgs225/displayctl"
+"go:github.com/zgs225/displayctl" = "v1.0.0"
 ```
+
+> **Important:** For non-registry Go tools, the `go:` prefix must be the **key**, not the value. Pin to a specific tag (e.g. `v1.0.0`) instead of `latest` to avoid Go proxy cache mismatches with pseudo-versions.
+
+> **注意：** 对于不在 mise 工具注册表中的 Go 工具，`go:` 前缀必须放在 **key**（键名）中，而不是 value（值）。请固定到具体的 tag（如 `v1.0.0`），避免与 Go proxy 缓存的伪版本不匹配。
 
 Then run / 然后执行：
 
