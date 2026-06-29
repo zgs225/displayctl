@@ -1,4 +1,4 @@
-module github.com/yuez/displayctl
+module github.com/zgs225/displayctl
 
 go 1.26.4
 

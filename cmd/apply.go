@@ -7,11 +7,11 @@ import (
 	"strconv"
 
 	"github.com/spf13/cobra"
-	"github.com/yuez/displayctl/config"
-	"github.com/yuez/displayctl/internal/dpi"
-	"github.com/yuez/displayctl/internal/hook"
-	"github.com/yuez/displayctl/internal/profile"
-	"github.com/yuez/displayctl/internal/xrandr"
+	"github.com/zgs225/displayctl/config"
+	"github.com/zgs225/displayctl/internal/dpi"
+	"github.com/zgs225/displayctl/internal/hook"
+	"github.com/zgs225/displayctl/internal/profile"
+	"github.com/zgs225/displayctl/internal/xrandr"
 )
 
 var modePattern = regexp.MustCompile(`^\d+x\d+$`)

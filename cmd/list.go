@@ -5,8 +5,8 @@ import (
 	"text/tabwriter"
 
 	"github.com/spf13/cobra"
-	"github.com/yuez/displayctl/config"
-	"github.com/yuez/displayctl/internal/profile"
+	"github.com/zgs225/displayctl/config"
+	"github.com/zgs225/displayctl/internal/profile"
 )
 
 func newListCmd() *cobra.Command {

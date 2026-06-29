@@ -1,6 +1,6 @@
 package main
 
-import "github.com/yuez/displayctl/cmd"
+import "github.com/zgs225/displayctl/cmd"
 
 func main() {
 	cmd.Execute()

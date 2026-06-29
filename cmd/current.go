@@ -4,8 +4,8 @@ import (
 	"fmt"
 
 	"github.com/spf13/cobra"
-	"github.com/yuez/displayctl/internal/dpi"
-	"github.com/yuez/displayctl/internal/xrandr"
+	"github.com/zgs225/displayctl/internal/dpi"
+	"github.com/zgs225/displayctl/internal/xrandr"
 )
 
 func newCurrentCmd() *cobra.Command {

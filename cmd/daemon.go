@@ -9,11 +9,11 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
-	"github.com/yuez/displayctl/config"
-	"github.com/yuez/displayctl/internal/dpi"
-	"github.com/yuez/displayctl/internal/hook"
-	"github.com/yuez/displayctl/internal/randr"
-	"github.com/yuez/displayctl/internal/xrandr"
+	"github.com/zgs225/displayctl/config"
+	"github.com/zgs225/displayctl/internal/dpi"
+	"github.com/zgs225/displayctl/internal/hook"
+	"github.com/zgs225/displayctl/internal/randr"
+	"github.com/zgs225/displayctl/internal/xrandr"
 )
 
 func newDaemonCmd() *cobra.Command {
