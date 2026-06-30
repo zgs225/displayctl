@@ -76,6 +76,14 @@ func applyProfile(cfgDir string, p *profile.Profile) error {
 		outputName = name
 	}
 
+	if p.Output.Mode == "auto" {
+		maxMode, err := xrandr.GetMaxMode(outputName)
+		if err != nil {
+			return fmt.Errorf("auto mode: %w", err)
+		}
+		p.Output.Mode = maxMode
+	}
+
 	if p.Output.Mode != "current" {
 		valid, err := xrandr.ValidateMode(outputName, p.Output.Mode)
 		if err != nil {

@@ -85,6 +85,66 @@ func ValidateMode(output, mode string) (bool, error) {
 	return false, nil
 }
 
+func GetMaxMode(output string) (string, error) {
+	out, err := runXrandr("--current")
+	if err != nil {
+		return "", err
+	}
+
+	inOutputBlock := false
+	var modes []struct {
+		name   string
+		width  int
+		height int
+	}
+
+	for line := range strings.SplitSeq(out, "\n") {
+		if strings.HasPrefix(line, output+" ") {
+			inOutputBlock = true
+			continue
+		}
+		if inOutputBlock {
+			if line == "" || (!strings.HasPrefix(line, "   ") && !strings.HasPrefix(line, "\t")) {
+				break
+			}
+			fields := strings.Fields(line)
+			if len(fields) > 0 {
+				mode := fields[0]
+				if strings.HasSuffix(mode, "+") || strings.HasSuffix(mode, "*") {
+					mode = strings.TrimSuffix(mode, "+")
+					mode = strings.TrimSuffix(mode, "*")
+				}
+				parts := strings.SplitN(mode, "x", 2)
+				if len(parts) == 2 {
+					w, _ := strconv.Atoi(parts[0])
+					h, _ := strconv.Atoi(parts[1])
+					if w > 0 && h > 0 {
+						modes = append(modes, struct {
+							name   string
+							width  int
+							height int
+						}{mode, w, h})
+					}
+				}
+			}
+		}
+	}
+
+	if len(modes) == 0 {
+		return "", fmt.Errorf("no modes found for output %s", output)
+	}
+
+	maxMode := modes[0]
+	for _, m := range modes[1:] {
+		area := m.width * m.height
+		maxArea := maxMode.width * maxMode.height
+		if area > maxArea {
+			maxMode = m
+		}
+	}
+	return maxMode.name, nil
+}
+
 func GetScreenSize() (int, int, error) {
 	output, err := GetActiveOutput()
 	if err != nil {
