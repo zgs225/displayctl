@@ -76,23 +76,34 @@ func applyProfile(cfgDir string, p *profile.Profile) error {
 		outputName = name
 	}
 
+	resolvedMode := p.Output.Mode
+
 	if p.Output.Mode == "auto" {
 		maxMode, err := xrandr.GetMaxMode(outputName)
 		if err != nil {
 			return fmt.Errorf("auto mode: %w", err)
 		}
+		resolvedMode = maxMode
 		p.Output.Mode = maxMode
 	}
 
-	if p.Output.Mode != "current" {
-		valid, err := xrandr.ValidateMode(outputName, p.Output.Mode)
+	if p.Output.Mode == "current" {
+		currentMode, err := xrandr.GetCurrentMode(outputName)
+		if err != nil {
+			return fmt.Errorf("get current mode: %w", err)
+		}
+		resolvedMode = currentMode
+	}
+
+	if resolvedMode != "current" {
+		valid, err := xrandr.ValidateMode(outputName, resolvedMode)
 		if err != nil {
 			return fmt.Errorf("validate mode: %w", err)
 		}
 		if !valid {
-			return fmt.Errorf("mode %s not supported on %s", p.Output.Mode, outputName)
+			return fmt.Errorf("mode %s not supported on %s", resolvedMode, outputName)
 		}
-		if err := xrandr.SetMode(outputName, p.Output.Mode, p.Output.Rate); err != nil {
+		if err := xrandr.SetMode(outputName, resolvedMode, p.Output.Rate); err != nil {
 			fmt.Fprintln(os.Stderr, err)
 			os.Exit(3)
 		}
@@ -116,14 +127,14 @@ func applyProfile(cfgDir string, p *profile.Profile) error {
 		if err := dpi.WriteRofiDPI(dpiValue); err != nil {
 			fmt.Fprintf(os.Stderr, "warning: write rofi-dpi.rasi: %v\n", err)
 		}
-		fmt.Printf("output=%s mode=%s dpi=%d\n", outputName, p.Output.Mode, dpiValue)
+		fmt.Printf("output=%s mode=%s dpi=%d\n", outputName, resolvedMode, dpiValue)
 	} else {
-		fmt.Printf("output=%s mode=%s dpi=unchanged\n", outputName, p.Output.Mode)
+		fmt.Printf("output=%s mode=%s dpi=unchanged\n", outputName, resolvedMode)
 	}
 
 	hookEnv := map[string]string{
 		"DISPLAYCTL_OUTPUT": outputName,
-		"DISPLAYCTL_MODE":   p.Output.Mode,
+		"DISPLAYCTL_MODE":   resolvedMode,
 		"DISPLAYCTL_DPI":    strconv.Itoa(dpiValue),
 	}
 	if err := hook.RunPostSwitch(cfgDir, hookEnv); err != nil {
