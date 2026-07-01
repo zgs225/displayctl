@@ -145,6 +145,28 @@ func GetMaxMode(output string) (string, error) {
 	return maxMode.name, nil
 }
 
+func GetScreenSizeFromScreenLine() (int, int, error) {
+	out, err := runXrandr("--current")
+	if err != nil {
+		return 0, 0, err
+	}
+	re := regexp.MustCompile(`Screen \d+:.*current (\d+) x (\d+)`)
+	for line := range strings.SplitSeq(out, "\n") {
+		if m := re.FindStringSubmatch(line); m != nil {
+			w, err := strconv.Atoi(m[1])
+			if err != nil {
+				return 0, 0, fmt.Errorf("invalid width: %s", m[1])
+			}
+			h, err := strconv.Atoi(m[2])
+			if err != nil {
+				return 0, 0, fmt.Errorf("invalid height: %s", m[2])
+			}
+			return w, h, nil
+		}
+	}
+	return 0, 0, fmt.Errorf("Screen line not found in xrandr output")
+}
+
 func GetScreenSize() (int, int, error) {
 	output, err := GetActiveOutput()
 	if err != nil {

@@ -60,9 +60,23 @@ func runDaemon(cmd *cobra.Command, args []string) error {
 func handleScreenChange() {
 	output, err := xrandr.GetActiveOutput()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "daemon: get active output: %v\n", err)
+		w, _, screenErr := xrandr.GetScreenSizeFromScreenLine()
+		if screenErr != nil {
+			fmt.Fprintf(os.Stderr, "daemon: get active output: %v; Screen line fallback: %v\n", err, screenErr)
+			return
+		}
+		dpiValue := dpi.CalculateFromTiers(w)
+		if err := dpi.SetXftDPI(dpiValue); err != nil {
+			fmt.Fprintf(os.Stderr, "daemon: set xft dpi: %v\n", err)
+			return
+		}
+		if err := dpi.WriteRofiDPI(dpiValue); err != nil {
+			fmt.Fprintf(os.Stderr, "daemon: write rofi-dpi: %v\n", err)
+		}
+		fmt.Fprintf(os.Stderr, "daemon: mode= Screen-fallback dpi=%d\n", dpiValue)
 		return
 	}
+
 	mode, err := xrandr.GetCurrentMode(output)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "daemon: get current mode: %v\n", err)

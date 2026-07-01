@@ -68,44 +68,59 @@ func buildTempProfile(mode string) *profile.Profile {
 
 func applyProfile(cfgDir string, p *profile.Profile) error {
 	outputName := p.Output.Name
+	screenFallback := false
+
 	if outputName == "" {
 		name, err := xrandr.GetActiveOutput()
 		if err != nil {
-			return fmt.Errorf("detect active output: %w", err)
+			if p.Output.Mode == "current" {
+				screenFallback = true
+			} else {
+				return fmt.Errorf("detect active output: %w", err)
+			}
+		} else {
+			outputName = name
 		}
-		outputName = name
 	}
 
 	resolvedMode := p.Output.Mode
 
-	if p.Output.Mode == "auto" {
-		maxMode, err := xrandr.GetMaxMode(outputName)
+	if screenFallback {
+		w, h, err := xrandr.GetScreenSizeFromScreenLine()
 		if err != nil {
-			return fmt.Errorf("auto mode: %w", err)
+			return fmt.Errorf("get screen size from Screen line: %w", err)
 		}
-		resolvedMode = maxMode
-		p.Output.Mode = maxMode
-	}
+		resolvedMode = fmt.Sprintf("%dx%d", w, h)
+	} else {
+		if p.Output.Mode == "auto" {
+			maxMode, err := xrandr.GetMaxMode(outputName)
+			if err != nil {
+				return fmt.Errorf("auto mode: %w", err)
+			}
+			resolvedMode = maxMode
+			p.Output.Mode = maxMode
+		}
 
-	if p.Output.Mode == "current" {
-		currentMode, err := xrandr.GetCurrentMode(outputName)
-		if err != nil {
-			return fmt.Errorf("get current mode: %w", err)
+		if p.Output.Mode == "current" {
+			currentMode, err := xrandr.GetCurrentMode(outputName)
+			if err != nil {
+				return fmt.Errorf("get current mode: %w", err)
+			}
+			resolvedMode = currentMode
 		}
-		resolvedMode = currentMode
-	}
 
-	if resolvedMode != "current" {
-		valid, err := xrandr.ValidateMode(outputName, resolvedMode)
-		if err != nil {
-			return fmt.Errorf("validate mode: %w", err)
-		}
-		if !valid {
-			return fmt.Errorf("mode %s not supported on %s", resolvedMode, outputName)
-		}
-		if err := xrandr.SetMode(outputName, resolvedMode, p.Output.Rate); err != nil {
-			fmt.Fprintln(os.Stderr, err)
-			os.Exit(3)
+		if resolvedMode != "current" {
+			valid, err := xrandr.ValidateMode(outputName, resolvedMode)
+			if err != nil {
+				return fmt.Errorf("validate mode: %w", err)
+			}
+			if !valid {
+				return fmt.Errorf("mode %s not supported on %s", resolvedMode, outputName)
+			}
+			if err := xrandr.SetMode(outputName, resolvedMode, p.Output.Rate); err != nil {
+				fmt.Fprintln(os.Stderr, err)
+				os.Exit(3)
+			}
 		}
 	}
 
@@ -113,7 +128,13 @@ func applyProfile(cfgDir string, p *profile.Profile) error {
 	if p.DPI.Value != nil {
 		dpiValue = *p.DPI.Value
 	} else if p.DPI.Tiers != nil && *p.DPI.Tiers {
-		w, _, err := xrandr.GetScreenSize()
+		var w int
+		var err error
+		if screenFallback {
+			w, _, err = xrandr.GetScreenSizeFromScreenLine()
+		} else {
+			w, _, err = xrandr.GetScreenSize()
+		}
 		if err != nil {
 			return fmt.Errorf("get screen size: %w", err)
 		}
