@@ -44,6 +44,8 @@ func RunPostSwitch(dir string, env map[string]string) error {
 		}
 		if out, err := cmd.CombinedOutput(); err != nil {
 			fmt.Fprintf(os.Stderr, "hook %s failed: %s: %s\n", name, err, strings.TrimSpace(string(out)))
+		} else {
+			fmt.Fprintf(os.Stderr, "hook: %s completed\n", name)
 		}
 	}
 	return nil
