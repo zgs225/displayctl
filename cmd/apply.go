@@ -145,9 +145,6 @@ func applyProfile(cfgDir string, p *profile.Profile) error {
 		if err := dpi.SetXftDPI(dpiValue); err != nil {
 			return fmt.Errorf("set xft dpi: %w", err)
 		}
-		if err := dpi.WriteRofiDPI(dpiValue); err != nil {
-			fmt.Fprintf(os.Stderr, "warning: write rofi-dpi.rasi: %v\n", err)
-		}
 		fmt.Printf("output=%s mode=%s dpi=%d\n", outputName, resolvedMode, dpiValue)
 	} else {
 		fmt.Printf("output=%s mode=%s dpi=unchanged\n", outputName, resolvedMode)
