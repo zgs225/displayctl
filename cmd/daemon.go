@@ -70,6 +70,10 @@ func handleScreenChange() {
 			fmt.Fprintf(os.Stderr, "daemon: set xft dpi: %v\n", err)
 			return
 		}
+		xcursorSize := dpi.CalculateXcursorSize(dpiValue)
+		if err := dpi.SetXcursorSize(xcursorSize); err != nil {
+			fmt.Fprintf(os.Stderr, "daemon: set xcursor size: %v\n", err)
+		}
 		fmt.Fprintf(os.Stderr, "daemon: mode= Screen-fallback dpi=%d\n", dpiValue)
 		return
 	}
@@ -91,14 +95,19 @@ func handleScreenChange() {
 		fmt.Fprintf(os.Stderr, "daemon: set xft dpi: %v\n", err)
 		return
 	}
+	xcursorSize := dpi.CalculateXcursorSize(dpiValue)
+	if err := dpi.SetXcursorSize(xcursorSize); err != nil {
+		fmt.Fprintf(os.Stderr, "daemon: set xcursor size: %v\n", err)
+	}
 
 	fmt.Fprintf(os.Stderr, "daemon: output=%s mode=%s dpi=%d\n", output, mode, dpiValue)
 
 	cfgDir := config.ConfigDir()
 	hookEnv := map[string]string{
-		"DISPLAYCTL_OUTPUT": output,
-		"DISPLAYCTL_MODE":   mode,
-		"DISPLAYCTL_DPI":    strconv.Itoa(dpiValue),
+		"DISPLAYCTL_OUTPUT":       output,
+		"DISPLAYCTL_MODE":         mode,
+		"DISPLAYCTL_DPI":          strconv.Itoa(dpiValue),
+		"DISPLAYCTL_XCURSOR_SIZE": strconv.Itoa(dpi.CalculateXcursorSize(dpiValue)),
 	}
 	if err := hook.RunPostSwitch(cfgDir, hookEnv); err != nil {
 		fmt.Fprintf(os.Stderr, "daemon: post-switch hooks: %v\n", err)

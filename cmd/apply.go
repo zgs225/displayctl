@@ -145,15 +145,20 @@ func applyProfile(cfgDir string, p *profile.Profile) error {
 		if err := dpi.SetXftDPI(dpiValue); err != nil {
 			return fmt.Errorf("set xft dpi: %w", err)
 		}
+		xcursorSize := dpi.CalculateXcursorSize(dpiValue)
+		if err := dpi.SetXcursorSize(xcursorSize); err != nil {
+			fmt.Fprintf(os.Stderr, "warning: set xcursor size: %v\n", err)
+		}
 		fmt.Printf("output=%s mode=%s dpi=%d\n", outputName, resolvedMode, dpiValue)
 	} else {
 		fmt.Printf("output=%s mode=%s dpi=unchanged\n", outputName, resolvedMode)
 	}
 
 	hookEnv := map[string]string{
-		"DISPLAYCTL_OUTPUT": outputName,
-		"DISPLAYCTL_MODE":   resolvedMode,
-		"DISPLAYCTL_DPI":    strconv.Itoa(dpiValue),
+		"DISPLAYCTL_OUTPUT":       outputName,
+		"DISPLAYCTL_MODE":         resolvedMode,
+		"DISPLAYCTL_DPI":          strconv.Itoa(dpiValue),
+		"DISPLAYCTL_XCURSOR_SIZE": strconv.Itoa(dpi.CalculateXcursorSize(dpiValue)),
 	}
 	if err := hook.RunPostSwitch(cfgDir, hookEnv); err != nil {
 		fmt.Fprintf(os.Stderr, "warning: post-switch hooks: %v\n", err)

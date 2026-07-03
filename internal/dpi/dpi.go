@@ -30,6 +30,19 @@ func SetXftDPI(dpi int) error {
 	return nil
 }
 
+func CalculateXcursorSize(dpi int) int {
+	return 24 * dpi / 96
+}
+
+func SetXcursorSize(size int) error {
+	cmd := exec.Command("xrdb", "-merge")
+	cmd.Stdin = strings.NewReader(fmt.Sprintf("Xcursor.size: %d", size))
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("xrdb -merge: %w", err)
+	}
+	return nil
+}
+
 func GetCurrentDPI() (int, error) {
 	out, err := exec.Command("xrdb", "-query").Output()
 	if err != nil {
