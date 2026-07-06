@@ -21,6 +21,14 @@ func CalculateFromTiers(width int) int {
 	}
 }
 
+func SetXrandrDPI(dpi int) error {
+	cmd := exec.Command("xrandr", "--dpi", strconv.Itoa(dpi))
+	if _, err := cmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("xrandr --dpi %d: %w", dpi, err)
+	}
+	return nil
+}
+
 func SetXftDPI(dpi int) error {
 	cmd := exec.Command("xrdb", "-merge")
 	cmd.Stdin = strings.NewReader(fmt.Sprintf("Xft.dpi: %d", dpi))

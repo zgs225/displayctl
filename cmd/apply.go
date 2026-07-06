@@ -142,6 +142,9 @@ func applyProfile(cfgDir string, p *profile.Profile) error {
 	}
 
 	if dpiValue > 0 {
+		if err := dpi.SetXrandrDPI(dpiValue); err != nil {
+			fmt.Fprintf(os.Stderr, "warning: set xrandr dpi: %v\n", err)
+		}
 		if err := dpi.SetXftDPI(dpiValue); err != nil {
 			return fmt.Errorf("set xft dpi: %w", err)
 		}

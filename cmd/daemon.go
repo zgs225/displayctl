@@ -66,6 +66,9 @@ func handleScreenChange() {
 			return
 		}
 		dpiValue := dpi.CalculateFromTiers(w)
+		if err := dpi.SetXrandrDPI(dpiValue); err != nil {
+			fmt.Fprintf(os.Stderr, "daemon: set xrandr dpi: %v\n", err)
+		}
 		if err := dpi.SetXftDPI(dpiValue); err != nil {
 			fmt.Fprintf(os.Stderr, "daemon: set xft dpi: %v\n", err)
 			return
@@ -91,6 +94,9 @@ func handleScreenChange() {
 	}
 
 	dpiValue := dpi.CalculateFromTiers(w)
+	if err := dpi.SetXrandrDPI(dpiValue); err != nil {
+		fmt.Fprintf(os.Stderr, "daemon: set xrandr dpi: %v\n", err)
+	}
 	if err := dpi.SetXftDPI(dpiValue); err != nil {
 		fmt.Fprintf(os.Stderr, "daemon: set xft dpi: %v\n", err)
 		return
