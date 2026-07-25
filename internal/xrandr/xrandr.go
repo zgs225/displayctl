@@ -17,6 +17,22 @@ func runXrandr(args ...string) (string, error) {
 	return string(out), nil
 }
 
+// Discover queries the live server (xrandr --verbose) and parses every output,
+// including EDID, connection state, active mode, position and modes.
+func Discover() ([]Output, error) {
+	out, err := runXrandr("--verbose")
+	if err != nil {
+		return nil, err
+	}
+	return Parse(out)
+}
+
+// Apply runs xrandr with a pre-built argument list (see layout.Build).
+func Apply(args []string) error {
+	_, err := runXrandr(args...)
+	return err
+}
+
 func GetActiveOutput() (string, error) {
 	out, err := runXrandr("--current")
 	if err != nil {
