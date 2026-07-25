@@ -1,0 +1,11 @@
+Screen 0: minimum 320 x 200, current 6400 x 2160, maximum 16384 x 16384
+eDP-1 connected primary 2560x1600+0+0 (normal left inverted right x axis y axis) 344mm x 215mm
+   2560x1600    120.02*+  59.99    60.03    59.97  
+   2560x1440     59.99    59.96    59.95  
+   1920x1080     60.00    59.94  
+DP-1 connected 3840x2160+2560+0 (normal left inverted right x axis y axis) 597mm x 336mm
+   3840x2160     60.00*+  30.00    29.97  
+   2560x1440     59.95  
+   1920x1080     60.00    59.94  
+DP-2 disconnected (normal left inverted right x axis y axis)
+HDMI-1-0 disconnected (normal left inverted right x axis y axis)
