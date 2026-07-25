@@ -55,7 +55,7 @@ func runApply(cmd *cobra.Command, args []string) error {
 func buildTempProfile(mode string) *profile.Profile {
 	tiers := true
 	return &profile.Profile{
-		Output: profile.OutputConfig{
+		Output: &profile.LegacyOutput{
 			Name: "",
 			Mode: mode,
 			Rate: 0,
@@ -66,7 +66,16 @@ func buildTempProfile(mode string) *profile.Profile {
 	}
 }
 
+// applyProfile dispatches between the v2 multi-output path and the legacy
+// single-output path.
 func applyProfile(cfgDir string, p *profile.Profile) error {
+	if len(p.Outputs) > 0 {
+		return applyProfileV2(cfgDir, p)
+	}
+	return applyProfileLegacy(cfgDir, p)
+}
+
+func applyProfileLegacy(cfgDir string, p *profile.Profile) error {
 	outputName := p.Output.Name
 	screenFallback := false
 
