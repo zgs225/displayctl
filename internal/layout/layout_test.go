@@ -16,7 +16,7 @@ func discovered(outputs ...xrandr.Output) []xrandr.Output { return outputs }
 func edp() xrandr.Output {
 	return xrandr.Output{
 		Name: "eDP-1", Connected: true, Primary: true, Mode: "2560x1600",
-		EDID: "edidEDP",
+		EDID:  "edidEDP",
 		Modes: []xrandr.Mode{{Name: "2560x1600", Preferred: true, Current: true}},
 	}
 }
@@ -24,7 +24,7 @@ func edp() xrandr.Output {
 func dp1() xrandr.Output {
 	return xrandr.Output{
 		Name: "DP-1", Connected: true, Mode: "3840x2160", PosX: 2560,
-		EDID: "edidDP1",
+		EDID:  "edidDP1",
 		Modes: []xrandr.Mode{{Name: "3840x2160", Preferred: true, Current: true}},
 	}
 }

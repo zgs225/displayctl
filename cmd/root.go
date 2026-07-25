@@ -15,6 +15,8 @@ func NewRootCmd() *cobra.Command {
 	root.AddCommand(newApplyCmd())
 	root.AddCommand(newListCmd())
 	root.AddCommand(newCurrentCmd())
+	root.AddCommand(newSaveCmd())
+	root.AddCommand(newLayoutCmd())
 	root.AddCommand(newDaemonCmd())
 	return root
 }

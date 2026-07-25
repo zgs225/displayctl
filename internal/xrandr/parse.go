@@ -47,9 +47,9 @@ func (o Output) PreferredMode() string {
 }
 
 var (
-	headerRe = regexp.MustCompile(`^(\S+)\s+(connected|disconnected)\b(.*)$`)
-	modePosRe = regexp.MustCompile(`(\d+x\d+)\+(\d+)\+(\d+)`)
-	mmRe      = regexp.MustCompile(`(\d+)mm x (\d+)mm`)
+	headerRe   = regexp.MustCompile(`^(\S+)\s+(connected|disconnected)\b(.*)$`)
+	modePosRe  = regexp.MustCompile(`(\d+x\d+)\+(\d+)\+(\d+)`)
+	mmRe       = regexp.MustCompile(`(\d+)mm x (\d+)mm`)
 	modeNameRe = regexp.MustCompile(`^\d+x\d+$`)
 	hexRe      = regexp.MustCompile(`^[0-9a-f]+$`)
 	screenRe   = regexp.MustCompile(`Screen \d+:.*current (\d+) x (\d+)`)

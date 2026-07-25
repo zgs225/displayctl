@@ -146,7 +146,7 @@ func TestSaveLoadRoundTrip(t *testing.T) {
 
 func TestLoadDefault(t *testing.T) {
 	dir := t.TempDir()
-	writeProfile(t, dir, "dock", v2Body)   // default=false
+	writeProfile(t, dir, "dock", v2Body)     // default=false
 	writeProfile(t, dir, "xrdp", legacyBody) // default=true
 
 	p, err := LoadDefault(dir)
@@ -173,5 +173,24 @@ func TestFindByFingerprint(t *testing.T) {
 
 	if _, _, err := FindByFingerprint(dir, "nomatch"); err == nil {
 		t.Error("FindByFingerprint should error on no match")
+	}
+}
+
+func TestLoadAll(t *testing.T) {
+	dir := t.TempDir()
+	writeProfile(t, dir, "dock", v2Body)
+	writeProfile(t, dir, "xrdp", legacyBody)
+
+	all := LoadAll(dir)
+	if len(all) != 2 {
+		t.Fatalf("LoadAll returned %d profiles, want 2", len(all))
+	}
+	if all["dock"] == nil || all["xrdp"] == nil {
+		t.Error("LoadAll missing expected profiles")
+	}
+
+	name, p, err := LoadDefaultName(dir)
+	if err != nil || name != "xrdp" || !p.Default {
+		t.Errorf("LoadDefaultName = %q, %v; want xrdp default", name, err)
 	}
 }

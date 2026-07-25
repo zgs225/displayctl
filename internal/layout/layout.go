@@ -224,9 +224,9 @@ func AutoArrange(disc []xrandr.Output) *profile.Profile {
 
 // Auto-selection reasons.
 const (
-	ReasonVirtualDefault   = "virtual-default"    // edid-less output → use default profile
-	ReasonFingerprintMatch = "fingerprint-match"  // known hardware combination
-	ReasonAutoArranged     = "auto-arranged"      // unknown combination → generated layout
+	ReasonVirtualDefault   = "virtual-default"   // edid-less output → use default profile
+	ReasonFingerprintMatch = "fingerprint-match" // known hardware combination
+	ReasonAutoArranged     = "auto-arranged"     // unknown combination → generated layout
 )
 
 // Decision is the outcome of ResolveAuto.

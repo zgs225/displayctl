@@ -45,13 +45,13 @@ type DPIConfig struct {
 // Profile is a display configuration. A profile is either v2 (Outputs map) or
 // legacy (single Output); see IsLegacy.
 type Profile struct {
-	Default bool                    `toml:"default"`
-	Layout  string                  `toml:"layout,omitempty"` // extend|mirror|single|custom (informational)
-	Manage  string                  `toml:"manage,omitempty"` // full|partial; default full
-	Match   *Match                  `toml:"match,omitempty"`
+	Default bool                     `toml:"default"`
+	Layout  string                   `toml:"layout,omitempty"` // extend|mirror|single|custom (informational)
+	Manage  string                   `toml:"manage,omitempty"` // full|partial; default full
+	Match   *Match                   `toml:"match,omitempty"`
 	Outputs map[string]*OutputConfig `toml:"outputs,omitempty"` // v2 multi-output
-	Output  *LegacyOutput           `toml:"output,omitempty"`   // v1 single-output
-	DPI     DPIConfig               `toml:"dpi"`
+	Output  *LegacyOutput            `toml:"output,omitempty"`  // v1 single-output
+	DPI     DPIConfig                `toml:"dpi"`
 }
 
 // IsLegacy reports whether the profile uses the v1 single-output [output] form.
@@ -142,6 +142,34 @@ func FindByFingerprint(dir, id string) (string, *Profile, error) {
 		}
 	}
 	return "", nil, fmt.Errorf("no profile matches fingerprint %s", id)
+}
+
+// LoadAll loads every profile in the directory keyed by name. Profiles that
+// fail to parse are skipped.
+func LoadAll(dir string) map[string]*Profile {
+	result := make(map[string]*Profile)
+	for _, name := range profileNames(dir) {
+		p, err := Load(dir, name)
+		if err != nil {
+			continue
+		}
+		result[name] = p
+	}
+	return result
+}
+
+// LoadDefaultName is like LoadDefault but also returns the profile's name.
+func LoadDefaultName(dir string) (string, *Profile, error) {
+	for _, name := range profileNames(dir) {
+		p, err := Load(dir, name)
+		if err != nil {
+			continue
+		}
+		if p.Default {
+			return name, p, nil
+		}
+	}
+	return "", nil, fmt.Errorf("no default profile found")
 }
 
 func profileNames(dir string) []string {

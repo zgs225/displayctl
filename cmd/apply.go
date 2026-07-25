@@ -10,6 +10,7 @@ import (
 	"github.com/zgs225/displayctl/config"
 	"github.com/zgs225/displayctl/internal/dpi"
 	"github.com/zgs225/displayctl/internal/hook"
+	"github.com/zgs225/displayctl/internal/layout"
 	"github.com/zgs225/displayctl/internal/profile"
 	"github.com/zgs225/displayctl/internal/xrandr"
 )
@@ -29,19 +30,15 @@ func runApply(cmd *cobra.Command, args []string) error {
 	arg := args[0]
 	cfgDir := config.ConfigDir()
 
+	if arg == "auto" {
+		return runApplyAuto(cfgDir)
+	}
+
 	var p *profile.Profile
 	var err error
-
-	switch {
-	case arg == "auto":
-		p, err = profile.LoadDefault(cfgDir)
-		if err != nil {
-			fmt.Fprintln(os.Stderr, err)
-			os.Exit(4)
-		}
-	case modePattern.MatchString(arg):
+	if modePattern.MatchString(arg) {
 		p = buildTempProfile(arg)
-	default:
+	} else {
 		p, err = profile.Load(cfgDir, arg)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err)
@@ -50,6 +47,30 @@ func runApply(cmd *cobra.Command, args []string) error {
 	}
 
 	return applyProfile(cfgDir, p)
+}
+
+// runApplyAuto implements event-driven profile selection: discover the current
+// hardware, then apply the fingerprint-matched profile, the default profile
+// (virtual sessions), or an auto-arranged temporary layout (unknown combo).
+func runApplyAuto(cfgDir string) error {
+	disc, err := xrandr.Discover()
+	if err != nil {
+		return fmt.Errorf("discover outputs: %w", err)
+	}
+	profiles := profile.LoadAll(cfgDir)
+	_, def, _ := profile.LoadDefaultName(cfgDir) // def may be nil
+	decision := layout.ResolveAuto(disc, profiles, def)
+
+	if decision.Profile == nil {
+		fmt.Fprintln(os.Stderr, "auto: no matching profile and no default; nothing to apply")
+		os.Exit(4)
+	}
+	if decision.Generated {
+		fmt.Fprintf(os.Stderr, "notice: unknown display combination — auto-arranged (%s). Run `displayctl save <name>` to remember it.\n", decision.Reason)
+	} else {
+		fmt.Fprintf(os.Stderr, "auto: applying %q (%s)\n", decision.Name, decision.Reason)
+	}
+	return applyProfile(cfgDir, decision.Profile)
 }
 
 func buildTempProfile(mode string) *profile.Profile {
