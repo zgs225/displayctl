@@ -49,28 +49,39 @@ func runApply(cmd *cobra.Command, args []string) error {
 	return applyProfile(cfgDir, p)
 }
 
-// runApplyAuto implements event-driven profile selection: discover the current
-// hardware, then apply the fingerprint-matched profile, the default profile
-// (virtual sessions), or an auto-arranged temporary layout (unknown combo).
+// runApplyAuto is the CLI entry for `apply auto`.
 func runApplyAuto(cfgDir string) error {
+	decision, err := resolveAuto(cfgDir)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(4)
+	}
+	announceAuto(decision)
+	return applyProfile(cfgDir, decision.Profile)
+}
+
+// resolveAuto discovers the current hardware and decides which profile to
+// apply. It is shared by the CLI and the daemon and never calls os.Exit.
+func resolveAuto(cfgDir string) (layout.Decision, error) {
 	disc, err := xrandr.Discover()
 	if err != nil {
-		return fmt.Errorf("discover outputs: %w", err)
+		return layout.Decision{}, fmt.Errorf("discover outputs: %w", err)
 	}
 	profiles := profile.LoadAll(cfgDir)
 	_, def, _ := profile.LoadDefaultName(cfgDir) // def may be nil
 	decision := layout.ResolveAuto(disc, profiles, def)
-
 	if decision.Profile == nil {
-		fmt.Fprintln(os.Stderr, "auto: no matching profile and no default; nothing to apply")
-		os.Exit(4)
+		return decision, fmt.Errorf("no matching profile and no default; nothing to apply")
 	}
+	return decision, nil
+}
+
+func announceAuto(decision layout.Decision) {
 	if decision.Generated {
 		fmt.Fprintf(os.Stderr, "notice: unknown display combination — auto-arranged (%s). Run `displayctl save <name>` to remember it.\n", decision.Reason)
 	} else {
 		fmt.Fprintf(os.Stderr, "auto: applying %q (%s)\n", decision.Name, decision.Reason)
 	}
-	return applyProfile(cfgDir, decision.Profile)
 }
 
 func buildTempProfile(mode string) *profile.Profile {

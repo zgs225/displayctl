@@ -26,8 +26,7 @@ func applyProfileV2(cfgDir string, p *profile.Profile) error {
 
 	if len(plan.Args) > 0 {
 		if err := xrandr.Apply(plan.Args); err != nil {
-			fmt.Fprintln(os.Stderr, err)
-			os.Exit(3)
+			return fmt.Errorf("xrandr apply: %w", err)
 		}
 	}
 

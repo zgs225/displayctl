@@ -152,6 +152,21 @@ func TestScreenSize(t *testing.T) {
 	}
 }
 
+func TestModeWidth(t *testing.T) {
+	outs, err := Parse(readFixture(t, "current_dual.txt"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	dp1 := findOutput(t, outs, "DP-1")
+	if got := dp1.ModeWidth(); got != 3840 {
+		t.Errorf("DP-1 ModeWidth = %d, want 3840", got)
+	}
+	inactive := Output{Name: "X", Connected: true}
+	if got := inactive.ModeWidth(); got != 0 {
+		t.Errorf("inactive ModeWidth = %d, want 0", got)
+	}
+}
+
 func trunc(s string, n int) string {
 	if len(s) > n {
 		return s[:n]

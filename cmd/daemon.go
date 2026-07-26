@@ -11,6 +11,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/zgs225/displayctl/config"
 	"github.com/zgs225/displayctl/internal/dpi"
+	"github.com/zgs225/displayctl/internal/fingerprint"
 	"github.com/zgs225/displayctl/internal/hook"
 	"github.com/zgs225/displayctl/internal/randr"
 	"github.com/zgs225/displayctl/internal/xrandr"
@@ -19,15 +20,26 @@ import (
 func newDaemonCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "daemon",
-		Short: "Run daemon that watches RandR events and auto-refreshes DPI",
+		Short: "Watch RandR events: re-apply auto on hotplug, refresh DPI on resize",
 		RunE:  runDaemon,
 	}
 }
+
+// lastFingerprint gates hotplug re-application: applying a layout does not
+// change the connected-output set, so the fingerprint stays stable and we avoid
+// re-applying in a loop. Only a genuine plug/unplug changes it.
+var lastFingerprint string
 
 func runDaemon(cmd *cobra.Command, args []string) error {
 	display := os.Getenv("DISPLAY")
 	if display == "" {
 		return fmt.Errorf("DISPLAY not set")
+	}
+
+	// Seed the fingerprint so the first event after startup (i3 already ran
+	// `apply auto`) does not spuriously re-apply.
+	if disc, err := xrandr.Discover(); err == nil {
+		lastFingerprint = fingerprint.Compute(fingerprint.FromOutputs(disc))
 	}
 
 	sigCh := make(chan os.Signal, 1)
@@ -37,7 +49,7 @@ func runDaemon(cmd *cobra.Command, args []string) error {
 
 	go func() {
 		for range debounce {
-			time.Sleep(200 * time.Millisecond)
+			time.Sleep(300 * time.Millisecond)
 			handleScreenChange()
 		}
 	}()
@@ -58,42 +70,58 @@ func runDaemon(cmd *cobra.Command, args []string) error {
 }
 
 func handleScreenChange() {
-	output, err := xrandr.GetActiveOutput()
+	cfgDir := config.ConfigDir()
+
+	disc, err := xrandr.Discover()
 	if err != nil {
-		w, _, screenErr := xrandr.GetScreenSizeFromScreenLine()
-		if screenErr != nil {
-			fmt.Fprintf(os.Stderr, "daemon: get active output: %v; Screen line fallback: %v\n", err, screenErr)
+		fmt.Fprintf(os.Stderr, "daemon: discover: %v\n", err)
+		return
+	}
+
+	id := fingerprint.Compute(fingerprint.FromOutputs(disc))
+	if id != lastFingerprint {
+		// Hardware combination changed (plug/unplug) → re-run auto selection.
+		lastFingerprint = id
+		decision, err := resolveAuto(cfgDir)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "daemon: auto: %v\n", err)
 			return
 		}
-		dpiValue := dpi.CalculateFromTiers(w)
-		if err := dpi.SetXrandrDPI(dpiValue); err != nil {
-			fmt.Fprintf(os.Stderr, "daemon: set xrandr dpi: %v\n", err)
+		announceAuto(decision)
+		if err := applyProfile(cfgDir, decision.Profile); err != nil {
+			fmt.Fprintf(os.Stderr, "daemon: apply: %v\n", err)
 		}
-		if err := dpi.SetXftDPI(dpiValue); err != nil {
-			fmt.Fprintf(os.Stderr, "daemon: set xft dpi: %v\n", err)
-			return
-		}
-		xcursorSize := dpi.CalculateXcursorSize(dpiValue)
-		if err := dpi.SetXcursorSize(xcursorSize); err != nil {
-			fmt.Fprintf(os.Stderr, "daemon: set xcursor size: %v\n", err)
-		}
-		fmt.Fprintf(os.Stderr, "daemon: mode= Screen-fallback dpi=%d\n", dpiValue)
 		return
 	}
 
-	mode, err := xrandr.GetCurrentMode(output)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "daemon: get current mode: %v\n", err)
+	// Fingerprint unchanged → a pure resize (e.g. XRDP client resize) → just
+	// refresh the global DPI off the primary active output.
+	refreshDPI(cfgDir, disc)
+}
+
+func refreshDPI(cfgDir string, disc []xrandr.Output) {
+	width := 0
+	var refName string
+	for _, o := range disc {
+		if o.Connected && o.Active() && o.Primary {
+			width, refName = o.ModeWidth(), o.Name
+			break
+		}
+	}
+	if width == 0 {
+		for _, o := range disc {
+			if o.Connected && o.Active() {
+				width, refName = o.ModeWidth(), o.Name
+				break
+			}
+		}
+	}
+	if width == 0 {
+		fmt.Fprintln(os.Stderr, "daemon: no active output to refresh DPI from")
 		return
 	}
 
-	w, _, err := xrandr.GetScreenSize()
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "daemon: get screen size: %v\n", err)
-		return
-	}
-
-	dpiValue := dpi.CalculateFromTiers(w)
+	dpiValue := dpi.CalculateFromTiers(width)
 	if err := dpi.SetXrandrDPI(dpiValue); err != nil {
 		fmt.Fprintf(os.Stderr, "daemon: set xrandr dpi: %v\n", err)
 	}
@@ -105,15 +133,13 @@ func handleScreenChange() {
 	if err := dpi.SetXcursorSize(xcursorSize); err != nil {
 		fmt.Fprintf(os.Stderr, "daemon: set xcursor size: %v\n", err)
 	}
+	fmt.Fprintf(os.Stderr, "daemon: resize output=%s dpi=%d\n", refName, dpiValue)
 
-	fmt.Fprintf(os.Stderr, "daemon: output=%s mode=%s dpi=%d\n", output, mode, dpiValue)
-
-	cfgDir := config.ConfigDir()
 	hookEnv := map[string]string{
-		"DISPLAYCTL_OUTPUT":       output,
-		"DISPLAYCTL_MODE":         mode,
+		"DISPLAYCTL_OUTPUT":       refName,
+		"DISPLAYCTL_MODE":         "",
 		"DISPLAYCTL_DPI":          strconv.Itoa(dpiValue),
-		"DISPLAYCTL_XCURSOR_SIZE": strconv.Itoa(dpi.CalculateXcursorSize(dpiValue)),
+		"DISPLAYCTL_XCURSOR_SIZE": strconv.Itoa(xcursorSize),
 	}
 	if err := hook.RunPostSwitch(cfgDir, hookEnv); err != nil {
 		fmt.Fprintf(os.Stderr, "daemon: post-switch hooks: %v\n", err)

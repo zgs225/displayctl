@@ -32,6 +32,17 @@ type Output struct {
 // Active reports whether the output currently drives a mode.
 func (o Output) Active() bool { return o.Mode != "" }
 
+// ModeWidth returns the width in pixels of the active mode, or 0 when inactive
+// or unparseable.
+func (o Output) ModeWidth() int {
+	parts := strings.SplitN(o.Mode, "x", 2)
+	if len(parts) != 2 {
+		return 0
+	}
+	w, _ := strconv.Atoi(parts[0])
+	return w
+}
+
 // PreferredMode returns the mode marked '+' (preferred/native), falling back to
 // the first listed mode. Returns "" when the output has no modes.
 func (o Output) PreferredMode() string {
