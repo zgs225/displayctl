@@ -1,120 +1,74 @@
 # displayctl
 
-> A unified display mode and DPI manager for Linux X11 sessions — built to solve the "same `Virtual-1`, different clients" problem that autorandr can't handle.
+> A unified display-mode, DPI and **multi-monitor layout** manager for Linux X11 sessions.
+>
+> 统一的 Linux X11 显示模式、DPI 与**多屏布局**管理工具。
 
-> 统一的 Linux X11 显示模式与 DPI 管理工具 — 专为解决 autorandr 无法应对的"同一 `Virtual-1`、不同客户端"场景而设计。
+It combines two things that are usually separate:
 
----
+1. **Multi-monitor layout management** — auto-discover monitors, remember a
+   setup per hardware combination (like `autorandr`), mirror/extend/single
+   modes, per-output position/resolution, persisted profiles.
+2. **Virtual-session DPI management** — the original use case: a shared
+   `Virtual-1` output used by XRDP / Sunshine / a local monitor, where EDID
+   never changes so `autorandr` is useless, and XRDP dynamically resizes the
+   screen requiring automatic DPI refresh.
 
-## The Problem / 问题
-
-A single X11 `:0` session on `Virtual-1` is shared across multiple remote clients — XRDP, Sunshine, a local physical monitor. The same output needs different modes depending on the client, but **EDID never changes**, so autorandr's EDID-matching profiles are useless. XRDP also dynamically resizes `Virtual-1` to match each connecting client's resolution, requiring automatic DPI refresh on every resize.
-
-单一 X11 `:0` 会话在 `Virtual-1` 上被多个远程客户端共享 — XRDP、Sunshine、本地物理显示器。同一输出需要根据客户端使用不同的模式，但 **EDID 始终不变**，因此 autorandr 的 EDID 匹配机制完全失效。XRDP 还会动态调整 `Virtual-1` 的分辨率以匹配每个连接的客户端，这就需要在每次 resize 时自动刷新 DPI。
-
-`displayctl` solves this with **event-driven profile selection** and a **RandR daemon** that auto-refreshes DPI.
-
-`displayctl` 通过 **事件驱动的 profile 选择** 和 **RandR 守护进程** 自动刷新 DPI 来解决此问题。
-
----
-
-## Features / 特性
-
-| Feature | 特性 |
-|---------|------|
-| TOML-based profiles for xrdp, sunshine, local monitor | 基于 TOML 的 profile 配置文件 |
-| One-shot `apply` command for profile / WxH / auto modes | 一次性 `apply` 命令，支持 profile / WxH / auto 三种模式 |
-| Long-lived `daemon` that watches RandR screen-change events | 长驻 `daemon`，监听 RandR 屏幕变化事件 |
-| Automatic DPI recalculation when XRDP resizes | XRDP resize 时自动重新计算 DPI |
-| Post-switch hooks for downstream refresh (polybar, etc.) | post-switch hooks 用于刷新下游组件（如 polybar） |
-| Single Go binary, no runtime dependencies beyond X11 tools | 单个 Go 二进制，运行时仅依赖 X11 工具 |
+`displayctl` handles both through **fingerprint-driven profile selection**, an
+**event-driven design**, and a **RandR daemon**.
 
 ---
 
-## Installation / 安装
+## Quick start
 
-### Via mise (recommended) / 通过 mise 安装（推荐）
-
-If you use [mise](https://mise.jdx.dev/) (which is the case for the companion dotfiles repo), add `displayctl` to your mise config:
-
-如果你使用 [mise](https://mise.jdx.dev/)（配套的 dotfiles 仓库就是这种情况），将 `displayctl` 添加到你的 mise 配置：
-
-```toml
-# ~/.config/mise/conf.d/displayctl.toml
-[tools]
-"go:github.com/zgs225/displayctl" = "v1.0.0"
+```sh
+displayctl apply auto          # auto-select the right profile for current hardware
+displayctl layout extend       # quick: extend all monitors (preferred modes, auto position)
+displayctl layout mirror       # quick: mirror all monitors on a common mode
+displayctl layout single DP-1  # quick: only DP-1, everything else off
+displayctl save dock-extend    # persist the CURRENT state as a named profile
+displayctl list                # show profiles (★ = matches current hardware)
+displayctl current             # show live layout + DPI
+displayctl daemon              # watch hotplug → re-apply auto; refresh DPI on resize
 ```
 
-> **Important:** For non-registry Go tools, the `go:` prefix must be the **key**, not the value. Pin to a specific tag (e.g. `v1.0.0`) instead of `latest` to avoid Go proxy cache mismatches with pseudo-versions.
-
-> **注意：** 对于不在 mise 工具注册表中的 Go 工具，`go:` 前缀必须放在 **key**（键名）中，而不是 value（值）。请固定到具体的 tag（如 `v1.0.0`），避免与 Go proxy 缓存的伪版本不匹配。
-
-Then run / 然后执行：
-
-```bash
-mise install
-```
-
-Or wait — if you use the companion dotfiles repo, `run_after_mise-install.sh` runs `mise install -q` after every `chezmoi apply`, so `displayctl` will be installed automatically.
-
-或者直接等待 — 如果你使用配套的 dotfiles 仓库，`run_after_mise-install.sh` 会在每次 `chezmoi apply` 后执行 `mise install -q`，`displayctl` 会被自动安装。
-
-The companion dotfiles repo ships a chezmoi template that generates this config **only when i3 is detected** (using the existing `useI3` data variable), so it is automatically installed on i3 machines and skipped elsewhere.
-
-配套的 dotfiles 仓库附带一个 chezmoi 模板，**仅在检测到 i3 时** 才生成此配置（使用现有的 `useI3` 数据变量），因此在 i3 机器上会自动安装，其他环境则跳过。
-
-### Build from source / 从源码构建
-
-```bash
-git clone https://github.com/zgs225/displayctl.git ~/workspace/Golang/displayctl
-cd ~/workspace/Golang/displayctl
-go build -o displayctl .
-cp displayctl ~/.bin/displayctl
-```
-
-### Dependencies / 运行时依赖
-
-The binary shells out to these X11 tools (already present on any X11 system):
-
-二进制调用以下 X11 工具（任何 X11 系统都已具备）：
-
-- `xrandr`
-- `xrdb`
+All commands accept `--json` where useful (`list --json`, `current --json`) for
+scripting / rofi integration.
 
 ---
 
-## CLI
+## How `apply auto` selects a profile
 
 ```
-displayctl apply <profile|WxH|auto>    # Apply a named profile, a temporary WxH mode, or the default profile
-displayctl list                        # List available profiles with summary
-displayctl current                     # Show current xrandr mode + DPI
-displayctl daemon                      # Long-lived: watch RandR events, auto-refresh DPI
+discover connected outputs (xrandr --verbose, incl. EDID)
+├─ any output has no EDID?  (Virtual-1 / XRDP / Sunshine)
+│     → apply the default=true profile          (legacy virtual behavior)
+└─ all outputs have EDID    (physical monitors)
+      ├─ fingerprint matches a saved profile?  → apply it (full state)
+      └─ no match (unknown combination)?       → auto-arrange extend layout
+                                                 + hint: `displayctl save <name>`
 ```
 
-### Apply argument modes / apply 参数模式
+- **Fingerprint** = sha256 over the sorted set of connected outputs'
+  `name:edidhash` labels. Order-independent; different monitor on the same port
+  → different fingerprint.
+- **Full state** (`manage = "full"`, the default): applying a profile turns
+  **off** any connected output the profile does not list. Use `manage =
+  "partial"` for virtual profiles that must not disable anything.
+- **Auto-arrange** (unknown combo): internal output (`eDP-`/`LVDS-`) becomes
+  primary at `0x0`, other outputs chained to the right at preferred modes. The
+  generated layout is temporary — run `save` to persist it.
 
-| Argument | Behavior | 行为 |
-|----------|----------|------|
-| `auto` | Find and apply the profile with `default = true` | 加载 `default = true` 的 profile |
-| `<profile-name>` | Load `profiles/<name>.toml` and apply | 加载 `profiles/<name>.toml` |
-| `<WxH>` (e.g. `2560x1440`) | Apply mode to active output with `dpi.tiers = true` | 对当前活动输出应用该分辨率，使用 tiers DPI |
-
-### Exit codes / 退出码
-
-| Code | Meaning | 含义 |
-|------|---------|------|
-| 0 | Success | 成功 |
-| 1 | General error | 一般错误 |
-| 2 | Profile not found | 未找到 profile |
-| 3 | xrandr execution failed | xrandr 执行失败 |
-| 4 | No default profile found (only for `auto`) | 未找到默认 profile（仅 `auto`） |
+The **daemon** recomputes the fingerprint on every (debounced) RandR event:
+if it changed (plug/unplug) it re-runs `apply auto`; if unchanged (an XRDP
+resize) it only refreshes the global DPI. Because applying a layout never
+changes the connected set, this gate prevents re-apply loops.
 
 ---
 
-## Configuration / 配置
+## Configuration
 
-### Paths / 路径
+### Paths
 
 | Path | Default | Override |
 |------|---------|----------|
@@ -122,179 +76,206 @@ displayctl daemon                      # Long-lived: watch RandR events, auto-re
 | Profiles | `<dir>/profiles/*.toml` | — |
 | Post-switch hooks | `<dir>/post-switch.d/` | — |
 
-### Profile TOML format / Profile TOML 格式
+### v2 profile format (multi-output)
 
 ```toml
-# xrdp.toml — XRDP sets the mode itself, don't override
+# profiles/dock-extend.toml
 default = false
+layout = "extend"            # informational: extend|mirror|single|custom
+manage = "full"              # full = turn off unlisted connected outputs
 
-[output]
-name = "Virtual-1"
-mode = "current"     # "current" = skip xrandr --mode, only set DPI
+[match]                      # binds this profile to a hardware combination
+id = "9f2a7c1bdeadbeef"      # fingerprint (written by `save`, don't hand-edit)
+outputs = ["DP-1:ab12cd34", "eDP-1:ef56ab78"]   # human-readable, for debugging
 
-[dpi]
-tiers = true         # Auto-calculate DPI from current resolution width
-```
+[outputs.eDP-1]              # one table per output, keyed by xrandr name
+mode = "2560x1600"           # "WxH" | "current" | "preferred" | "off"
+rate = 120                   # optional refresh rate
+pos = "0x0"                  # geometry (mouse crosses screens via this)
+primary = true               # primary output = DPI reference + i3 main screen
+# rotate = "normal"          # optional: normal|left|right|inverted
+# scale = 1.0                # optional xrandr --scale (bitmap transform; can blur)
 
-```toml
-# sunshine.toml — fixed 4K streaming
-default = false
-
-[output]
-name = "Virtual-1"
+[outputs.DP-1]
 mode = "3840x2160"
-rate = 60
+pos = "2560x0"
 
-[dpi]
-value = 192          # Fixed DPI value; takes priority over tiers
+[dpi]                        # X11 has ONE global DPI per screen
+tiers = true                 # auto from reference width, or: value = 144
+reference = "eDP-1"          # output the DPI keys off; default = primary
 ```
 
+#### mode vocabulary
+
+| value | xrandr action |
+|-------|---------------|
+| `"WxH"` | `--mode WxH` |
+| `"preferred"` / `"auto"` | `--auto` (display's native mode) |
+| `"current"` | keep current mode (only adjust DPI/position) |
+| `"off"` | `--off` (disable this output) |
+
+#### DPI tiers
+
+| reference width | DPI |
+|-----------------|-----|
+| ≥ 3000 | 192 |
+| ≥ 2700 | 168 |
+| ≥ 2000 | 144 |
+| < 2000 | 96 |
+
+> **Mixed-DPI note:** X11 cannot do true per-monitor DPI — there is one global
+> `Xft.dpi`. `reference` picks which screen the global DPI favours (usually the
+> primary/internal). Per-output `scale` is an optional bitmap-transform escape
+> hatch but introduces blur, so it is off by default.
+
+### Legacy v1 format (still supported, read-only)
+
+The original single-output `[output]` profiles (xrdp / sunshine / monitor) keep
+working. A profile is legacy when it has `[output]` and no `[outputs]`.
+
 ```toml
-# monitor.toml — local physical monitor fallback
 default = true
-
 [output]
 name = "Virtual-1"
-mode = "3840x2160"
-
+mode = "current"     # "current" = skip mode change, only set DPI
 [dpi]
-value = 192
+tiers = true
 ```
-
-#### Field reference / 字段说明
-
-| Field | Required | Description |
-|-------|----------|-------------|
-| `default` | No | `true` marks this as the profile for `apply auto`. Default: `false` |
-| `output.name` | Yes | xrandr output name (e.g. `Virtual-1`) |
-| `output.mode` | Yes | `WxH` string or `"current"` (skip mode change) |
-| `output.rate` | No | Refresh rate. If omitted, xrandr picks default |
-| `dpi.value` | No* | Fixed DPI value. Priority over `tiers` |
-| `dpi.tiers` | No* | `true` = calculate DPI from resolution width |
-
-\* At least one of `dpi.value` or `dpi.tiers` should be set. If neither, DPI is not changed.
-
-### DPI tiers logic / DPI 分档逻辑
-
-| Screen width | DPI | Tier |
-|-------------|-----|------|
-| >= 3000 | 192 | retina |
-| >= 2700 | 168 | — |
-| >= 2000 | 144 | hidpi |
-| < 2000 | 96 | normal |
 
 ---
 
-## Event-Driven Design / 事件驱动设计
+## CLI
 
-`displayctl` **does not** auto-detect environment by sniffing env vars or processes (XRDP env vars are unreliable; Sunshine is always running regardless of client connection). Instead, the **event source explicitly calls** the profile:
+```
+displayctl apply <profile|WxH|auto>      # apply profile / temp WxH / auto-select
+displayctl layout <extend|mirror|single <output>>   # quick layout, not saved
+displayctl save <name>                   # persist current state as a profile
+displayctl list [--json]                 # list profiles (★ = current match)
+displayctl current [--json]              # show live layout + DPI
+displayctl daemon                        # hotplug re-apply + DPI refresh
+```
 
-`displayctl` **不**通过嗅探环境变量或进程来自动检测环境（XRDP 环境变量不可靠；Sunshine 始终在后台运行，与是否有客户端连接无关）。取而代之的是 **事件源显式调用** profile：
+### `apply` argument modes
+
+| Argument | Behavior |
+|----------|----------|
+| `auto` | fingerprint-match → default (virtual) → auto-arrange (unknown) |
+| `<profile-name>` | load `profiles/<name>.toml` and apply |
+| `<WxH>` | apply mode to the active output with tiers DPI (legacy temp mode) |
+
+---
+
+## Event-driven design
+
+`displayctl` does **not** sniff environment variables or processes to guess the
+context. The event source explicitly calls the right thing:
 
 | Scenario | Trigger | Command |
 |----------|---------|---------|
-| i3 startup | i3 `exec_always` autostart | `displayctl apply auto` |
+| i3 startup | i3 `exec_always` | `displayctl apply auto` |
+| Monitor plug/unplug | `displayctl daemon` (RandR) | auto re-apply (fingerprint gate) |
 | XRDP login | XRDP `startwm.sh` | `displayctl apply xrdp` |
-| XRDP client resize | `displayctl daemon` (RandR event) | Auto DPI refresh |
-| Sunshine connect | Sunshine `on_connect` hook | `displayctl apply sunshine` |
-| Manual switch | User terminal | `displayctl apply 2560x1440` |
+| XRDP client resize | `displayctl daemon` (RandR) | DPI refresh |
+| Sunshine connect | Sunshine `on_connect` | `displayctl apply sunshine` |
+| Manual switch | terminal / rofi | `displayctl apply <name>` / `layout …` |
+
+## Post-switch hooks
+
+Executable files in `~/.config/display/post-switch.d/` (sorted by name) run
+after every apply, receiving:
+
+- `DISPLAYCTL_OUTPUT` — reference output name
+- `DISPLAYCTL_MODE` — resolved mode
+- `DISPLAYCTL_DPI` — new DPI value
+- `DISPLAYCTL_XCURSOR_SIZE` — computed Xcursor size
 
 ---
 
-## Post-Switch Hooks / 切换后钩子
+## Installation
 
-Place executable files in `~/.config/display/post-switch.d/` (sorted by filename). Each hook receives:
+### Via mise (recommended)
 
-将可执行脚本放入 `~/.config/display/post-switch.d/`（按文件名排序执行）。每个 hook 接收以下环境变量：
+```toml
+# ~/.config/mise/conf.d/displayctl.toml
+[tools]
+"go:github.com/zgs225/displayctl" = "v2.0.0"
+```
 
-- `DISPLAYCTL_OUTPUT` — output name (e.g. `Virtual-1`)
-- `DISPLAYCTL_MODE` — new mode (e.g. `3840x2160`)
-- `DISPLAYCTL_DPI` — new DPI value (e.g. `192`)
+> For non-registry Go tools the `go:` prefix must be the **key**, not the value.
+> Pin a specific tag (not `latest`) to avoid Go proxy pseudo-version mismatches.
 
-Example / 示例:
+### Build from source
 
 ```sh
-# post-switch.d/10-polybar
-#!/bin/sh
-~/.config/polybar/launch.sh &
+git clone https://github.com/zgs225/displayctl.git
+cd displayctl
+go build -o displayctl .
 ```
 
-There are **no pre-switch hooks** — xrandr mode changes don't require rollback.
+### Runtime dependencies
 
-没有 **pre-switch 钩子** — xrandr 模式切换不需要回滚。
+Shells out to `xrandr` and `xrdb` (present on any X11 system).
 
 ---
 
-## Dotfiles Integration / 集成到 dotfiles
-
-In a chezmoi-based dotfiles repo:
-
-在基于 chezmoi 的 dotfiles 仓库中：
-
-```
-dot_config/display/
-├── profiles/
-│   ├── xrdp.toml
-│   ├── sunshine.toml
-│   └── monitor.toml
-└── post-switch.d/
-    └── (your hooks)
-```
-
-i3 autostart (`dot_config/i3/config.tmpl`):
-
-```
-exec_always --no-startup-id displayctl apply auto
-exec --no-startup-id displayctl daemon
-```
-
-xinitrc (`dot_xinitrc`):
-
-```
-command -v displayctl >/dev/null 2>&1 && displayctl apply auto
-exec i3
-```
-
----
-
-## Architecture / 架构
+## Architecture
 
 ```
 displayctl/
-├── main.go                  # Entrypoint
+├── main.go
 ├── cmd/
-│   ├── root.go              # Cobra root
-│   ├── apply.go             # apply subcommand
-│   ├── list.go              # list subcommand
-│   ├── current.go           # current subcommand
-│   └── daemon.go            # daemon subcommand
-├── config/
-│   └── defaults.go          # Default paths
+│   ├── root.go            # Cobra root
+│   ├── apply.go           # apply + apply-auto (resolveAuto shared with daemon)
+│   ├── apply_v2.go        # v2 multi-output apply (Discover+Build+Apply+DPI+hooks)
+│   ├── layout.go          # extend/mirror/single quick layouts
+│   ├── save.go            # persist current state
+│   ├── list.go            # list [--json]
+│   ├── current.go         # current [--json]
+│   └── daemon.go          # RandR watch, fingerprint-gated re-apply, DPI refresh
+├── config/defaults.go     # paths
 └── internal/
-    ├── xrandr/              # xrandr CLI wrapper
-    ├── dpi/                 # DPI calculation + xrdb/rofi
-    ├── profile/             # TOML profile parsing
-    ├── hook/                # post-switch.d execution
-    └── randr/               # xgb RandR event listener
+    ├── xrandr/            # xrandr CLI wrapper + pure Parse/ScreenSize/Output
+    ├── fingerprint/       # hardware-combination id (sha256 over output labels)
+    ├── profile/           # v2 TOML schema, legacy compat, Save/Load/Find
+    ├── layout/            # pure planning: Build, AutoArrange, Mirror, Single,
+    │                      #   Capture, ResolveAuto
+    ├── dpi/               # DPI calculation + xrdb/xrandr
+    ├── hook/              # post-switch.d execution
+    └── randr/             # xgb RandR event listener
 ```
 
-### Dependencies / 依赖
+Core logic (parsing, fingerprinting, profile schema, layout planning,
+auto-selection) is **pure and unit-tested**; the effectful layer (xrandr/xrdb
+execution, xgb events) is kept thin.
+
+### Dependencies
 
 | Library | Purpose |
 |---------|---------|
 | [`github.com/spf13/cobra`](https://github.com/spf13/cobra) | CLI framework |
-| [`github.com/BurntSushi/xgb`](https://github.com/BurntSushi/xgb) | X11 protocol |
+| [`github.com/BurntSushi/xgb`](https://github.com/BurntSushi/xgb) | X11/RandR protocol |
 | [`github.com/pelletier/go-toml/v2`](https://github.com/pelletier/go-toml) | TOML parsing |
 
 ---
 
-## License / 许可证
+## Testing
 
-MIT
+```sh
+go test ./...
+```
+
+Parser tests use real `xrandr` fixtures captured from a hybrid-GPU laptop
+(internal BOE panel + Dell U2720QM 4K).
 
 ---
 
-## See Also / 相关项目
+## License
 
-- [`autorandr`](https://github.com/phillipberndt/autorandr) — EDID-based profile switching (works well for laptops with physically different monitors; useless when EDID is fixed)
-- [`xrandr`](https://wiki.archlinux.org/title/Xrandr) — the underlying CLI tool
+MIT
+
+## See also
+
+- [`autorandr`](https://github.com/phillipberndt/autorandr) — EDID-based
+  profile switching. Works for physically distinct monitors but fails when EDID
+  is fixed (the `Virtual-1` case). `displayctl`'s fingerprint matching covers
+  the physical case while its explicit-call model covers the virtual case.
