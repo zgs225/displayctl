@@ -79,6 +79,16 @@ func Build(p *profile.Profile, disc []xrandr.Output) (*Plan, error) {
 		}
 	}
 
+	// Release CRTC from disconnected-but-active outputs.
+	// Hotplug race: kernel reports disconnected but X still holds the CRTC;
+	// without --off the CRTC is never freed → another output's --auto/--primary
+	// fails with BadMatch (no free CRTC) → black screen.
+	for _, o := range disc {
+		if !o.Connected && o.Mode != "" {
+			args = append(args, "--output", o.Name, "--off")
+		}
+	}
+
 	// manage=full: disable connected outputs the profile does not mention.
 	if p.ManageMode() == "full" {
 		sort.Strings(connected)

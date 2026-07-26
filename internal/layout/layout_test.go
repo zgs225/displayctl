@@ -116,6 +116,32 @@ func TestPlanTurnsOffUnlistedWhenFull(t *testing.T) {
 	}
 }
 
+func TestPlanReleasesDisconnectedCRTC(t *testing.T) {
+	// Hotplug race: DP-1 physically disconnected but X still holds its CRTC
+	// (Mode != ""). Build must emit --off for it so eDP-1 can claim the CRTC.
+	dp1Ghost := xrandr.Output{
+		Name: "DP-1", Connected: false, Mode: "3840x2160",
+		EDID: "edidDP1",
+		Modes: []xrandr.Mode{{Name: "3840x2160", Preferred: true}},
+	}
+	// laptop-only profile: only eDP-1 configured, manage=full.
+	p := &profile.Profile{
+		Layout: "single",
+		Manage: "full",
+		Outputs: map[string]*profile.OutputConfig{
+			"eDP-1": {Mode: "2560x1600", Pos: "0x0", Primary: true},
+		},
+		DPI: profile.DPIConfig{Tiers: boolPtr(true), Reference: "eDP-1"},
+	}
+	plan, err := Build(p, discovered(edp(), dp1Ghost))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !hasSeq(plan.Args, "--output", "DP-1", "--off") {
+		t.Errorf("disconnected-but-active DP-1 must be --off to free CRTC: %v", plan.Args)
+	}
+}
+
 func TestPlanPartialKeepsUnlisted(t *testing.T) {
 	p := dockProfile()
 	p.Manage = "partial"
