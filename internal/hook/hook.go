@@ -6,7 +6,6 @@ import (
 	"os/exec"
 	"path/filepath"
 	"sort"
-	"strings"
 )
 
 func RunPostSwitch(dir string, env map[string]string) error {
@@ -42,8 +41,14 @@ func RunPostSwitch(dir string, env map[string]string) error {
 		for k, v := range env {
 			cmd.Env = append(cmd.Env, fmt.Sprintf("%s=%s", k, v))
 		}
-		if out, err := cmd.CombinedOutput(); err != nil {
-			fmt.Fprintf(os.Stderr, "hook %s failed: %s: %s\n", name, err, strings.TrimSpace(string(out)))
+		// Inherit our stderr instead of capturing through a pipe: hooks may
+		// spawn long-lived grandchildren (e.g. eww) that keep the pipe's write
+		// end open, so CombinedOutput would wait for an EOF that never comes
+		// and wedge the daemon forever.
+		cmd.Stdout = os.Stderr
+		cmd.Stderr = os.Stderr
+		if err := cmd.Run(); err != nil {
+			fmt.Fprintf(os.Stderr, "hook %s failed: %v\n", name, err)
 		} else {
 			fmt.Fprintf(os.Stderr, "hook: %s completed\n", name)
 		}

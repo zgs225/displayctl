@@ -121,7 +121,7 @@ func TestPlanReleasesDisconnectedCRTC(t *testing.T) {
 	// (Mode != ""). Build must emit --off for it so eDP-1 can claim the CRTC.
 	dp1Ghost := xrandr.Output{
 		Name: "DP-1", Connected: false, Mode: "3840x2160",
-		EDID: "edidDP1",
+		EDID:  "edidDP1",
 		Modes: []xrandr.Mode{{Name: "3840x2160", Preferred: true}},
 	}
 	// laptop-only profile: only eDP-1 configured, manage=full.
