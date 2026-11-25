@@ -259,3 +259,41 @@ func TestResolveAutoGeneratesWhenNoMatch(t *testing.T) {
 		t.Errorf("generated layout = %q, want extend", d.Profile.Layout)
 	}
 }
+
+// A dock that re-enumerates the same panels under another output name (DP-1 in
+// SST mode, DP-1-1 through an MST branch) must still match its saved profile
+// through the name-independent EDID-set id instead of falling back to
+// auto-arrangement (which historically recomputed a tier DPI of 144).
+func TestResolveAutoMatchesEDIDSetDespiteRename(t *testing.T) {
+	outs := []xrandr.Output{edp(), dp1()}
+	outs[1].Name = "DP-1-1"
+	refs := fingerprint.FromOutputs(outs)
+
+	dock := dockProfile()
+	dock.Match = &profile.Match{
+		ID:  "stale-name-based-id",
+		IDs: []string{fingerprint.ComputeEDIDs(refs)},
+	}
+	profiles := map[string]*profile.Profile{"dock-extend": dock}
+
+	d := ResolveAuto(discovered(outs...), profiles, nil)
+	if d.Reason != ReasonFingerprintMatch || d.Name != "dock-extend" || d.Generated {
+		t.Fatalf("should match dock-extend by EDID set, got name=%q reason=%q generated=%v",
+			d.Name, d.Reason, d.Generated)
+	}
+}
+
+// A generated unknown combo is pinned to the configured DPI by pinDPI before
+// Build, so the same panel never renders at a tier-derived size.
+func TestPinDPIFixesGeneratedTierDPI(t *testing.T) {
+	outs := []xrandr.Output{edp(), dp1()}
+	p := AutoArrange(discovered(outs...))
+	PinDPI(p, 168)
+	plan, err := Build(p, discovered(outs...))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if plan.DPI != 168 {
+		t.Errorf("plan DPI = %d, want pinned 168 (was tiers)", plan.DPI)
+	}
+}

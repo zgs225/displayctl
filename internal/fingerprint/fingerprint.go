@@ -41,6 +41,28 @@ func Compute(refs []Ref) string {
 	return hex.EncodeToString(sum[:])[:16]
 }
 
+// ComputeEDIDs returns a name-independent fingerprint for a hardware
+// combination: only the connected EDIDs participate. Output names are volatile
+// on MST/dock setups (the same monitor is reported as DP-1 in SST mode but
+// DP-1-1 through an MST branch), so a name-based fingerprint silently stops
+// matching after a re-plug and the combo falls back to auto-arrangement.
+//
+// Returns "" when any ref lacks an EDID (virtual session), because a virtual
+// output cannot participate in EDID matching.
+func ComputeEDIDs(refs []Ref) string {
+	hashes := make([]string, 0, len(refs))
+	for _, r := range refs {
+		if r.EDID == "" {
+			return ""
+		}
+		sum := sha256.Sum256([]byte(r.EDID))
+		hashes = append(hashes, hex.EncodeToString(sum[:])[:8])
+	}
+	sort.Strings(hashes)
+	sum := sha256.Sum256([]byte(strings.Join(hashes, ";")))
+	return hex.EncodeToString(sum[:])[:16]
+}
+
 // FromOutputs builds fingerprint refs from connected xrandr outputs, skipping
 // disconnected ones.
 func FromOutputs(outs []xrandr.Output) []Ref {

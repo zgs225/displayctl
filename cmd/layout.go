@@ -45,5 +45,8 @@ func runLayout(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("unknown layout %q (want extend, mirror, or single)", args[0])
 	}
 
+	// Quick layouts are generated, so pin the machine's configured DPI rather
+	// than letting a width tier change the UI size for the same panel.
+	layout.PinDPI(p, config.LoadSettings().FixedDPI())
 	return applyProfileV2(cfgDir, p)
 }

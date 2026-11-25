@@ -257,16 +257,31 @@ func ResolveAuto(disc []xrandr.Output, profiles map[string]*profile.Profile, def
 	}
 
 	id := fingerprint.Compute(refs)
+	edidID := fingerprint.ComputeEDIDs(refs)
 	names := make([]string, 0, len(profiles))
 	for n := range profiles {
 		names = append(names, n)
 	}
 	sort.Strings(names)
 	for _, n := range names {
-		if profiles[n].MatchID() == id {
+		if profiles[n].Matches(id, edidID) {
 			return Decision{Profile: profiles[n], Name: n, Reason: ReasonFingerprintMatch}
 		}
 	}
 
 	return Decision{Profile: AutoArrange(disc), Name: "auto", Generated: true, Reason: ReasonAutoArranged}
+}
+
+// PinDPI fixes a profile's global DPI when it does not pin one itself. It is
+// used for generated profiles (auto-arrange, quick layouts, temporary modes):
+// X11 has a single global DPI, so deriving one from the reference width makes
+// the same panel render at a different size whenever the connected outputs
+// change. Profiles that already carry [dpi] value are left untouched; a zero
+// fallback keeps the historical tier behaviour (virtual sessions).
+func PinDPI(p *profile.Profile, fixed int) {
+	if p == nil || fixed <= 0 || p.DPI.Value != nil {
+		return
+	}
+	v := fixed
+	p.DPI.Value = &v
 }

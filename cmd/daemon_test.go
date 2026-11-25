@@ -3,6 +3,7 @@ package cmd
 import (
 	"testing"
 
+	"github.com/zgs225/displayctl/internal/layout"
 	"github.com/zgs225/displayctl/internal/profile"
 	"github.com/zgs225/displayctl/internal/xrandr"
 )
@@ -115,5 +116,25 @@ func TestRefreshDPIResizeFallsBackToTiers(t *testing.T) {
 func TestEffectiveDPINilProfileUsesTiers(t *testing.T) {
 	if got := effectiveDPI(nil, 2560); got != 144 {
 		t.Errorf("effectiveDPI(nil, 2560) = %d, want 144", got)
+	}
+}
+
+// A generated profile pinned by layout.PinDPI must survive a pure resize with
+// the fixed DPI. This is the dock/unknown-combo path: the plan is 168, so a
+// later RandR resize must not snap back to the 144 tier.
+func TestRefreshDPIResizeHonorsPinnedGeneratedProfile(t *testing.T) {
+	s := stubResize(t)
+	tiers := true
+	lastProfile = &profile.Profile{DPI: profile.DPIConfig{Tiers: &tiers}}
+	layout.PinDPI(lastProfile, 168)
+	t.Cleanup(func() { lastProfile = nil })
+
+	refreshDPI(t.TempDir(), activePrimary("2560x1600"))
+
+	if s.dpi != 168 {
+		t.Errorf("refreshDPI dpi = %d, want pinned 168", s.dpi)
+	}
+	if got := s.hookEnv["DISPLAYCTL_DPI"]; got != "168" {
+		t.Errorf("hook DISPLAYCTL_DPI = %q, want 168", got)
 	}
 }

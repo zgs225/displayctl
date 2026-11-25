@@ -38,6 +38,7 @@ func runApply(cmd *cobra.Command, args []string) error {
 	var err error
 	if modePattern.MatchString(arg) {
 		p = buildTempProfile(arg)
+		layout.PinDPI(p, config.LoadSettings().FixedDPI())
 	} else {
 		p, err = profile.Load(cfgDir, arg)
 		if err != nil {
@@ -72,6 +73,9 @@ func resolveAuto(cfgDir string) (layout.Decision, error) {
 	decision := layout.ResolveAuto(disc, profiles, def)
 	if decision.Profile == nil {
 		return decision, fmt.Errorf("no matching profile and no default; nothing to apply")
+	}
+	if decision.Generated {
+		layout.PinDPI(decision.Profile, config.LoadSettings().FixedDPI())
 	}
 	return decision, nil
 }

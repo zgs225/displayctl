@@ -42,10 +42,16 @@ func runList(cmd *cobra.Command, jsonOut bool) error {
 		return err
 	}
 
-	// Current hardware fingerprint, used to mark the matching profile.
-	currentID := ""
+	// Current hardware fingerprints (name+EDID and name-independent EDID set),
+	// used to mark the matching profile. Output names flip between dock
+	// enumerations (DP-1 ↔ DP-1-1), so both must be considered.
+	currentIDs := []string{}
 	if disc, derr := xrandr.Discover(); derr == nil {
-		currentID = fingerprint.Compute(fingerprint.FromOutputs(disc))
+		refs := fingerprint.FromOutputs(disc)
+		currentIDs = append(currentIDs, fingerprint.Compute(refs), fingerprint.ComputeEDIDs(refs))
+	}
+	matchesCurrent := func(s profile.ProfileSummary) bool {
+		return profile.MatchAny(s.MatchIDs, currentIDs)
 	}
 
 	if jsonOut {
@@ -57,7 +63,7 @@ func runList(cmd *cobra.Command, jsonOut bool) error {
 				Outputs: splitCSV(s.Outputs),
 				DPI:     s.DPI,
 				Default: s.Default,
-				Match:   s.MatchID != "" && s.MatchID == currentID,
+				Match:   matchesCurrent(s),
 			})
 		}
 		return json.NewEncoder(cmd.OutOrStdout()).Encode(out)
@@ -71,7 +77,7 @@ func runList(cmd *cobra.Command, jsonOut bool) error {
 			defMark = "*"
 		}
 		matchMark := ""
-		if s.MatchID != "" && s.MatchID == currentID {
+		if matchesCurrent(s) {
 			matchMark = "★"
 		}
 		fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\n", s.Name, s.Layout, s.Outputs, s.DPI, defMark, matchMark)

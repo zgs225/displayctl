@@ -29,9 +29,16 @@ type LegacyOutput struct {
 	Rate int    `toml:"rate,omitempty"`
 }
 
-// Match binds a profile to a hardware combination fingerprint.
+// Match binds a profile to one or more hardware combination fingerprints.
+//
+// ID is the historical name+EDID fingerprint. IDs holds alternatives — in
+// particular the name-independent EDID-set fingerprint (see
+// fingerprint.ComputeEDIDs), which survives output renames such as DP-1 vs
+// DP-1-1 across SST/MST dock enumeration. A profile matches when any of its
+// ids equals either current fingerprint.
 type Match struct {
 	ID      string   `toml:"id"`
+	IDs     []string `toml:"ids,omitempty"`     // alternative fingerprints (EDID-set ids)
 	Outputs []string `toml:"outputs,omitempty"` // human-readable labels for debugging
 }
 
@@ -69,12 +76,58 @@ func (p *Profile) ManageMode() string {
 	return p.Manage
 }
 
-// MatchID returns the profile's fingerprint id, or "" if it has none.
+// MatchID returns the profile's primary fingerprint id, or "" if it has none.
 func (p *Profile) MatchID() string {
 	if p.Match == nil {
 		return ""
 	}
 	return p.Match.ID
+}
+
+// MatchIDs returns every fingerprint id the profile accepts, ID first.
+func (p *Profile) MatchIDs() []string {
+	if p.Match == nil {
+		return nil
+	}
+	ids := make([]string, 0, len(p.Match.IDs)+1)
+	if p.Match.ID != "" {
+		ids = append(ids, p.Match.ID)
+	}
+	for _, id := range p.Match.IDs {
+		if id != "" {
+			ids = append(ids, id)
+		}
+	}
+	return ids
+}
+
+// Matches reports whether the profile accepts any of the given fingerprint ids
+// (current name-based and EDID-set fingerprints).
+func (p *Profile) Matches(ids ...string) bool {
+	for _, want := range p.MatchIDs() {
+		for _, got := range ids {
+			if got != "" && want == got {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// MatchAny reports whether any of want equals any of got. Empty ids never
+// match, so profiles without a fingerprint stay inert.
+func MatchAny(want, got []string) bool {
+	for _, w := range want {
+		if w == "" {
+			continue
+		}
+		for _, g := range got {
+			if g != "" && w == g {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // OutputNames returns the v2 output names in stable (sorted) order.
@@ -189,13 +242,14 @@ func profileNames(dir string) []string {
 }
 
 type ProfileSummary struct {
-	Name    string
-	Layout  string
-	Outputs string
-	Mode    string // legacy: single mode; v2: joined modes
-	DPI     string
-	Default bool
-	MatchID string
+	Name     string
+	Layout   string
+	Outputs  string
+	Mode     string // legacy: single mode; v2: joined modes
+	DPI      string
+	Default  bool
+	MatchID  string
+	MatchIDs []string
 }
 
 func List(dir string) ([]ProfileSummary, error) {
@@ -219,11 +273,12 @@ func summarize(name string, p *Profile) ProfileSummary {
 	}
 
 	s := ProfileSummary{
-		Name:    name,
-		Layout:  p.Layout,
-		DPI:     dpiStr,
-		Default: p.Default,
-		MatchID: p.MatchID(),
+		Name:     name,
+		Layout:   p.Layout,
+		DPI:      dpiStr,
+		Default:  p.Default,
+		MatchID:  p.MatchID(),
+		MatchIDs: p.MatchIDs(),
 	}
 	if p.IsLegacy() {
 		s.Mode = p.Output.Mode

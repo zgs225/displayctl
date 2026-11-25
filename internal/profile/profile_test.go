@@ -194,3 +194,20 @@ func TestLoadAll(t *testing.T) {
 		t.Errorf("LoadDefaultName = %q, %v; want xrdp default", name, err)
 	}
 }
+
+func TestMatchIDsIncludesAlternatives(t *testing.T) {
+	p := &Profile{Match: &Match{ID: "name-based", IDs: []string{"edid-set", ""}}}
+	got := p.MatchIDs()
+	if len(got) != 2 || got[0] != "name-based" || got[1] != "edid-set" {
+		t.Fatalf("MatchIDs() = %v, want [name-based edid-set]", got)
+	}
+	if !p.Matches("edid-set") || !p.Matches("name-based") || p.Matches("other") {
+		t.Error("Matches must accept either id and reject unknown ids")
+	}
+	if (&Profile{}).Matches("anything") {
+		t.Error("profile without match must never match")
+	}
+	if MatchAny([]string{"", "x"}, []string{"", "x"}) != true || MatchAny([]string{""}, []string{""}) {
+		t.Error("MatchAny must ignore empty ids")
+	}
+}

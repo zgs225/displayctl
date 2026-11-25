@@ -73,8 +73,25 @@ changes the connected set, this gate prevents re-apply loops.
 | Path | Default | Override |
 |------|---------|----------|
 | Config dir | `~/.config/display` | `DISPLAYCTL_DIR` env var |
+| Settings | `<dir>/config.toml` (optional) | — |
 | Profiles | `<dir>/profiles/*.toml` | — |
 | Post-switch hooks | `<dir>/post-switch.d/` | — |
+
+### Machine settings (`config.toml`)
+
+```toml
+[defaults]
+dpi = 168     # global DPI for GENERATED physical profiles
+```
+
+X11 exposes exactly one global DPI (`Xft.dpi`), so a width-tier fallback makes
+the same panel render at different sizes depending on what is plugged in.
+`defaults.dpi` is pinned onto every *generated* profile: auto-arranged unknown
+combinations, `layout extend|mirror|single`, and `apply <WxH>`. Explicit
+profiles keep their own `[dpi]` (`value` or `tiers`); leave `dpi` unset (0) to
+keep the historical tier behaviour. Virtual sessions (XRDP/Sunshine) should
+keep `tiers = true` — their resolution is genuinely unknown until a client
+connects, and they run on the same `:0` screen.
 
 ### v2 profile format (multi-output)
 
@@ -85,7 +102,8 @@ layout = "extend"            # informational: extend|mirror|single|custom
 manage = "full"              # full = turn off unlisted connected outputs
 
 [match]                      # binds this profile to a hardware combination
-id = "9f2a7c1bdeadbeef"      # fingerprint (written by `save`, don't hand-edit)
+id = "9f2a7c1bdeadbeef"      # name+EDID fingerprint (written by `save`)
+ids = ["480275d49ee8085a"]   # alternative name-independent EDID-set ids
 outputs = ["DP-1:ab12cd34", "eDP-1:ef56ab78"]   # human-readable, for debugging
 
 [outputs.eDP-1]              # one table per output, keyed by xrandr name
@@ -127,6 +145,20 @@ reference = "eDP-1"          # output the DPI keys off; default = primary
 > `Xft.dpi`. `reference` picks which screen the global DPI favours (usually the
 > primary/internal). Per-output `scale` is an optional bitmap-transform escape
 > hatch but introduces blur, so it is off by default.
+>
+> **Prefer a fixed `value` on physical profiles.** A `tiers` profile re-renders
+> that same panel at a different size whenever the reference width changes
+> (docking, resolution switch), which is visible in every toolkit and in the
+> eww/rofi sizes derived from `Xft.dpi`. `save` therefore writes the captured
+> DPI as a fixed `value`.
+
+#### Fingerprints
+
+`id` hashes each connected output's **name + EDID**. Output names are volatile
+on docks (the same monitor is `DP-1` in SST mode but `DP-1-1` through an MST
+branch), so `save` also records the name-independent **EDID-set fingerprint**
+in `ids`. A profile matches when any of its ids equals either current
+fingerprint, which keeps saved dock profiles matching across re-enumerations.
 
 ### Legacy v1 format (still supported, read-only)
 
@@ -149,7 +181,7 @@ tiers = true
 ```
 displayctl apply <profile|WxH|auto>      # apply profile / temp WxH / auto-select
 displayctl layout <extend|mirror|single <output>>   # quick layout, not saved
-displayctl save <name>                   # persist current state as a profile
+displayctl save <name>                   # persist state; pins captured DPI + EDID ids
 displayctl list [--json]                 # list profiles (★ = current match)
 displayctl current [--json]              # show live layout + DPI
 displayctl daemon                        # hotplug re-apply + DPI refresh
@@ -161,7 +193,7 @@ displayctl daemon                        # hotplug re-apply + DPI refresh
 |----------|----------|
 | `auto` | fingerprint-match → default (virtual) → auto-arrange (unknown) |
 | `<profile-name>` | load `profiles/<name>.toml` and apply |
-| `<WxH>` | apply mode to the active output with tiers DPI (legacy temp mode) |
+| `<WxH>` | apply mode to the active output with the pinned DPI (`defaults.dpi`), tiers only when unset |
 
 ---
 
@@ -233,6 +265,7 @@ displayctl/
 │   ├── current.go         # current [--json]
 │   └── daemon.go          # RandR watch, fingerprint-gated re-apply, DPI refresh
 ├── config/defaults.go     # paths
+├── config/settings.go     # optional config.toml ([defaults] dpi)
 └── internal/
     ├── xrandr/            # xrandr CLI wrapper + pure Parse/ScreenSize/Output
     ├── fingerprint/       # hardware-combination id (sha256 over output labels)

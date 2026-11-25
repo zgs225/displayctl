@@ -69,3 +69,26 @@ func TestHasVirtual(t *testing.T) {
 		t.Error("set containing an edid-less output should be virtual")
 	}
 }
+
+func TestComputeEDIDsIgnoresNames(t *testing.T) {
+	sst := []Ref{{Name: "eDP-1", EDID: "edidA"}, {Name: "DP-1", EDID: "edidB"}}
+	mst := []Ref{{Name: "eDP-1", EDID: "edidA"}, {Name: "DP-1-1", EDID: "edidB"}}
+	if ComputeEDIDs(sst) != ComputeEDIDs(mst) {
+		t.Error("EDID fingerprint must not depend on xrandr output names")
+	}
+}
+
+func TestComputeEDIDsEmptyForVirtual(t *testing.T) {
+	refs := []Ref{{Name: "eDP-1", EDID: "edidA"}, {Name: "Virtual-1", EDID: ""}}
+	if got := ComputeEDIDs(refs); got != "" {
+		t.Errorf("ComputeEDIDs with a virtual output = %q, want empty", got)
+	}
+}
+
+func TestComputeEDIDsDistinctSets(t *testing.T) {
+	single := []Ref{{Name: "eDP-1", EDID: "edidA"}}
+	dual := []Ref{{Name: "eDP-1", EDID: "edidA"}, {Name: "DP-1", EDID: "edidB"}}
+	if ComputeEDIDs(single) == ComputeEDIDs(dual) {
+		t.Error("different EDID sets must produce different fingerprints")
+	}
+}
